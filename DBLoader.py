@@ -1,63 +1,81 @@
+from timeit import default_timer as timer
 import pickle
 from Node import Node
 from Frontier import AStarFrontier
-from TilesProblem import ReverseProblem, TilesProblem
-from timeit import default_timer as timer
+from SubProblem import SubProblem
 
-
-def CreateDB(problem):  # ricerca su grafo ottima verso tutti gli stati possibili a partire dallo stato goal
-    maxDepth = 0
-    time = 0
-    start = timer()
-    n = Node(problem.initialState)
+def generateDB(problem):
+    node = Node(problem.initialState, str(problem.initialState), 0)
     frontier = AStarFrontier()
-    frontier.Push(n, problem.GetKey(n.state), n.pathCost)
-    explored = {}
-    while frontier.dim != 0:
-        node = frontier.Pop()
-        end = timer()
-        time += end - start
-        if time > 1800:
-            print(str(frontier.dim) + ' nodes in frontier')
-            time = 0
-        start = timer()
-        if node.depth > maxDepth:
-            maxDepth += 1
-            print('Reached Depth: ' + str(maxDepth))
-        problem.db[problem.GetKey(node.state)] = node.pathCost
-        explored[problem.GetKey(node.state)] = node.state
-        for a in problem.Actions(node.state):
-            child = node.Child(problem, a)
-            if problem.GetKey(child.state) not in explored and not frontier.Search(problem.GetKey(child.state)):
-                frontier.Push(child, problem.GetKey(child.state), child.pathCost)
-            else:
-                # se in frontiera ci sta un'altro nodo con lo stato di child
-                if frontier.Search(problem.GetKey(child.state)):
-                    # valuta se scambiare child con quel nodo
-                    frontier.Fixup(child, problem.GetKey(child.state), child.pathCost)
+    frontier.push(node)
+    db = {}
+    while frontier.size != 0:
+        node = frontier.pop()
+        db[node.key] = node.pathCost
+        for action in problem.actions(node.state):
+            child = node.child(problem, action)
+            if not (child.key in db) and not (frontier.search(child)):
+                frontier.push(child)
+            elif frontier.isBetter(child):
+                frontier.fixup(child)
+    return db
 
 
-tiles1 = {1, 2, 3, 4}
-tiles2 = {5, 6, 7, 8}
-tiles3 = {2, 5, 7, 8}
-tiles4 = {1, 3, 4, 6}
+n = 16
 
-problem1 = ReverseProblem(TilesProblem(), tiles1)
-CreateDB(problem1)
-pickle.dump(problem1.db, open('DB1.txt', 'wb'))
-print('=====================DB1 Loaded!!!=============================')
+#TODO define here a partition of a (n-1)-tiles problem!
+#TODO if you change these values make sure to change also the variables in the function disjointDatabase of the TilesProblem module
+tiles1 = {1, 5, 9, 13, 2}
+tiles2 = {6, 10, 14, 3, 7}
+tiles3 = {11, 15, 4, 8, 12}
 
-problem2 = ReverseProblem(TilesProblem(), tiles2)
-CreateDB(problem2)
-pickle.dump(problem2.db, open('DB2.txt', 'wb'))
-print('=====================DB2 Loaded!!!=============================')
+#TODO define here a partition of a (n-1)-tiles problem!
+#TODO if you change these values make sure to change also the variables in the function disjointAndReflected of the TilesProblem module
+tiles4 = {1, 2, 3, 4, 5}
+tiles5 = {6, 7, 8, 9, 10}
+tiles6 = {11, 12, 13, 14, 15}
 
-problem3 = ReverseProblem(TilesProblem(), tiles3)
-CreateDB(problem3)
-pickle.dump(problem3.db, open('DB3.txt', 'wb'))
-print('=====================DB3 Loaded!!!=============================')
+problem = SubProblem(n, tiles1)
+print('DB1 Generation:')
+print('Tiles: '+str(tiles1))
+db = generateDB(problem)
+pickle.dump(db, open('DB-15Tiles\\DB1.txt', 'wb'))
+print('==============================DB1 LOADED!!=============================')
+print()
 
-problem4 = ReverseProblem(TilesProblem(), tiles4)
-CreateDB(problem4)
-pickle.dump(problem4.db, open('DB4.txt', 'wb'))
-print('=====================DB4 Loaded!!!=============================')
+problem = SubProblem(n, tiles2)
+print('DB2 Generation:')
+print('Tiles: '+str(tiles2))
+db = generateDB(problem)
+pickle.dump(db, open('DB-15Tiles\\DB2.txt', 'wb'))
+print('==============================DB2 LOADED!!=============================')
+print()
+
+problem = SubProblem(n, tiles3)
+print('DB3 Generation:')
+print('Tiles: '+str(tiles3))
+db = generateDB(problem)
+pickle.dump(db, open('DB-15Tiles\\DB3.txt', 'wb'))
+print('==============================DB3 LOADED!!=============================')
+print()
+
+problem = SubProblem(n, tiles4)
+print('DB4 Generation:')
+print('Tiles: '+str(tiles4))
+db = generateDB(problem)
+pickle.dump(db, open('DB-15Tiles\\DB4.txt', 'wb'))
+print('==============================DB4 LOADED!!=============================')
+
+problem = SubProblem(n, tiles5)
+print('DB5 Generation:')
+print('Tiles: '+str(tiles5))
+db = generateDB(problem)
+pickle.dump(db, open('DB-15Tiles\\DB5.txt', 'wb'))
+print('==============================DB5 LOADED!!=============================')
+
+problem = SubProblem(n, tiles6)
+print('DB6 Generation:')
+print('Tiles: '+str(tiles6))
+db = generateDB(problem)
+pickle.dump(db, open('DB-15Tiles\\DB6.txt', 'wb'))
+print('==============================DB6 LOADED!!=============================')

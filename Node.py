@@ -1,23 +1,28 @@
+
 class Node:
-    def __init__(self, state):
-        self.state = state.__copy__()
-        self.action = None
+    def __init__(self, state, key, priority):
+        self.state = state
+        self.key = key
+        self.priority = priority
         self.parent = None
-        self.depth=0
+        self.action = None
         self.pathCost = 0
 
-    def Solution(self):
-        actionSequence = []
-        x = self
-        while x.parent is not None:
-            actionSequence.insert(0, x.action)
-            x = x.parent
-        return actionSequence
-
-    def Child(self, problem, action):
-        child = Node(problem.Result(self.state, action))
+    def child(self, problem, action):
+        state = problem.result(self.state, action)
+        key = state.__str__()
+        g = self.pathCost + problem.stepCost(self.state, action, state)
+        priority = g + problem.heuristic(state)
+        child = Node(state, key, priority)
         child.parent = self
-        child.depth=self.depth+1
         child.action = action
-        child.pathCost = self.pathCost + problem.Cost(self.state, action, child.state)
+        child.pathCost = g
         return child
+
+    def solution(self):
+        solution = []
+        node = self
+        while node.parent != None:
+            solution.insert(0,node.action)
+            node = node.parent
+        return solution

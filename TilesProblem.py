@@ -1,306 +1,203 @@
+import pickle
 import math
 import random
-import pickle
+
+
+def getValueFromDB(state, tiles, file):
+    keyState = state.__copy__()
+    db = pickle.load(open(file, 'rb'))
+    keyState.projection(tiles)
+    key = str(keyState)
+    value = db[key]
+    return value
 
 
 class State:
-    def __init__(self, A):
-        self.n = len(A)
-        self.dim = int(math.sqrt(self.n))
-        self.tiles = self.n
-        self.pos = {}
-        self.table = {}
-        for i in range(len(A)):
-            if A[i] != len(A):
-                self.pos[A[i]] = i
-                self.table[i] = A[i]
+    def __init__(self, table):
+        self.table = table.copy()
+        for i in range(len(table)):
+            if table[i] == 0:
+                self.blankPos = i
+
+    def __str__(self):
+        s = ''
+        for i in range(len(self.table)):
+            if self.table[i] != len(self.table):
+                s += str(self.table[i])+','
+            else:
+                s += '*,'
+        return s[:-1]
 
     def __copy__(self):
-        state = State(self.Array())
-        state.tiles = self.tiles
-        return state
+        return State(self.table)
 
-    def Array(self):
-        A = []
-        for i in range(self.n):
-            if i in self.table:
-                A.append(self.table[i])
-            else:
-                A.append(self.n)
-        return A
-
-    def GetRows(self):
-        rows = []
-        A = self.Array()
-        for i in range(self.dim):
-            rows.append(A[self.dim * i:self.dim * i + self.dim])
-        return rows
-
-    def GetColumns(self):
-        columns = []
-        A = self.Array()
-        for i in range(self.dim):
-            column = []
-            for j in range(self.dim):
-                column.append(A[i + j * self.dim])
-            columns.append(column.copy())
-        return columns
-
-    def Serialization(self):
-        s = ''
-        for i in range(self.dim):
-            for j in range(self.dim):
-                pos = self.dim * i + j
-                if pos in self.table:
-                    value = self.table[pos]
-                    s += str(value) + ','
-                else:
-                    s += '*,'
-        return s[:-1]
-
-    def Print(self):
-        for i in range(self.dim):
-            s = '|'
-            for j in range(self.dim):
-                pos = self.dim * i + j
-                if pos in self.table:
-                    value = self.table[pos]
-                    if value == 0:
-                        s += '  |'
-                    elif value // 10 == 0:
-                        s += ' ' + str(value) + '|'
-                    else:
-                        s += str(value) + '|'
-                else:
-                    s += ' *|'
-            print(s)
-
-    def Project(self, tiles):  # tiles è un insieme di celle(quelle che voglio tenere nello stato parziale)
-        state = self.__copy__()
-        for i in range(1, self.n):
-            if i not in tiles:
-                pos = state.pos[i]
-                del state.table[pos]
-                del state.pos[i]
-                state.tiles = state.tiles - 1
-        return state
-
-    def FringeTiles(self):
-        s = ''
-        for i in range(self.dim):
-            for j in range(self.dim):
-                pos = self.dim * i + j
-                if pos in self.table:
-                    value = self.table[pos]
-                    if value != 0:
-                        s += str(value) + ','
-                    else:
-                        s += '*,'
-                else:
-                    s += '*,'
-        return s[:-1]
-
-
-def abs(x):
-    if x >= 0:
-        return x
-    return -1 * x
-
-
-def GetCouple(A):
-    n = len(A)
-    couples = []
-    for i in range(n - 1):
-        for j in range(i + 1, n):
-            couple = []
-            couple.append(A[i])
-            couple.append(A[j])
-            couples.append(couple.copy())
-    return couples
-
-
-def ManhattanDistance(state, problem):
-    #    n = problem.numTiles + 1
-    #    d = math.ceil(math.sqrt(n))
-    n = state.n
-    d = state.dim
-    distance = 0
-    for i in range(1, n):
-        posg = problem.goal.pos[i]
-        x = posg // d
-        y = posg - x * d
-        pos = state.pos[i]
-        posx = pos // d
-        posy = pos - d * posx
-        distance = distance + abs(x - posx) + abs(y - posy)
-    return distance
-
-
-def LinearConflicts(state, problem):
-    def _Conflict(A, B):
-        count = 0
-        ACouples = GetCouple(A)
-        BCouples = GetCouple(B)
-        for i in range(len(ACouples)):
-            for j in range(len(BCouples)):
-                if ACouples[i][0] == BCouples[j][1] and ACouples[i][1] == BCouples[j][0]:  # togliere le coppie con zeri
-                    if ACouples[i][0] != 0 and ACouples[i][1] != 0:
-                        count += 1
-        return (count)
-
-    value = ManhattanDistance(state, problem)
-    goalRows = problem.goal.GetRows()
-    goalColumns = problem.goal.GetColumns()
-    rows = state.GetRows()
-    columns = state.GetColumns()
-    count = 0
-    for i in range(len(rows)):
-        count += _Conflict(rows[i], goalRows[i])
-        count += _Conflict(columns[i], goalColumns[i])
-    return value + count * 2
-
-
-def DisjointPatternDatabases(state, problem):
-    s1 = state.Project({1, 2, 3, 4}).Serialization()
-    s2 = state.Project({5, 6, 7, 8}).Serialization()
-    value1 = problem.db1[s1]
-    value2 = problem.db2[s2]
-    return value1 + value2
-
-
-def DisjointAndReflected(state, problem):
-    max = DisjointPatternDatabases(state, problem)
-    s3 = state.Project({2, 5, 7, 8}).Serialization()
-    s4 = state.Project({1, 3, 4, 6}).Serialization()
-    value = problem.db3[s3] + problem.db4[s4]
-    if max < value:
-        max = value
-    return max
-
+    def projection(self, tiles):
+        n = len(self.table)
+        for i in range(n):
+            if (self.table[i] not in tiles) and self.table[i] != 0:
+                self.table[i] = n
 
 class TilesProblem:
-    def __init__(self, scrambles=100, goal=list(range(9))):
+    def __init__(self, n, scrambles=100):
         self.scrambles = scrambles
-        self.numTiles = len(goal) - 1
-        self.actions = {'up', 'down', 'left', 'right'}
-        self.goal = State(goal)
-        self.LoadDatabases()  # TODO commentare questa riga prima dell'esecuzione di DBLoader nel caso si voglia riprodurre i database
+        self.n = n
+        self.legalActions = {'left', 'right', 'up', 'down'}
+        goal = list(range(1, self.n))
+        goal.append(0)
+        self.goalState = State(goal)
+        self.h = self.uniformCost
+        self.db1 = pickle.load(open('DB-15Tiles\\DB1.txt', 'rb'))
+        self.db2 = pickle.load(open('DB-15Tiles\\DB2.txt', 'rb'))
+        self.db3 = pickle.load(open('DB-15Tiles\\DB3.txt', 'rb'))
+        self.db4 = pickle.load(open('DB-15Tiles\\DB4.txt', 'rb'))
+        self.db5 = pickle.load(open('DB-15Tiles\\DB5.txt', 'rb'))
+        self.db6 = pickle.load(open('DB-15Tiles\\DB6.txt', 'rb'))
 
-    def __copy__(self):
-        return TilesProblem(self.scrambles, self.goal.Array())
+    def setHeuristic(self, heuristic):
+        if heuristic == 'uniformCost':
+            self.h = self.uniformCost
+        if heuristic == 'manhattan':
+            self.h = self.manhattan
+        if heuristic == 'linearConflicts':
+            self.h = self.linearConflicts
+        if heuristic == 'disjointDatabases':
+            self.h = self.disjointDatabases
+        if heuristic == 'disjointAndReflected':
+            self.h = self.disjointAndReflected
 
-    def LoadDatabases(self):
-        self.db1 = pickle.load(open('DB1.txt', 'rb'))
-        self.db2 = pickle.load(open('DB2.txt', 'rb'))
-        self.db3 = pickle.load(open('DB3.txt', 'rb'))
-        self.db4 = pickle.load(open('DB4.txt', 'rb'))
+    def heuristic(self, state):
+        return self.h(state)
 
-    def GetInstance(self, state):
-        self.initialState = State(state)
+    def setInitialState(self, table):
+        self.n = len(table)
+        self.initialState = State(table)
+        goal = list(range(1, self.n))
+        goal.append(0)
+        self.goalState = State(goal)
 
-    def SetHeuristic(self, heuristic):
-        self.heuristic = heuristic
-
-    def RandomState(self):
-        state = self.goal.__copy__()
-        actions = []
-        for a in self.actions:
-            actions.append(a)
+    def randomTable(self):
+        state = self.goalState.__copy__()
         for i in range(self.scrambles):
-            j = random.randrange(0, len(actions))
-            a = actions[j]
-            if a in self.Actions(state):
-                state = self.Result(state, a)
-        return state.Array()
+            action = random.sample(self.actions(state), 1)
+            state = self.result(state, action[0])
+        return state.table
 
-    def GetKey(self, state):
-        return state.Serialization()
+    def stepCost(self, state, action, newState):
+        return 1
 
-    def Heuristic(self, state):
-        if self.heuristic == 'Manhattan':
-            return ManhattanDistance(state, self)
-        if self.heuristic == 'Linear Conflicts':
-            return LinearConflicts(state, self)
-        if self.heuristic == 'Disjoint Pattern Databases':
-            return DisjointPatternDatabases(state, self)
-        if self.heuristic == 'Disjoint + Reflected':
-            return DisjointAndReflected(state, self)
-        if self.heuristic == 'None':
-            return 0
+    def actions(self, state):
+        legalActions = self.legalActions.copy()
+        dimension = int(math.sqrt(len(state.table)))
+        x = state.blankPos//dimension
+        y = state.blankPos-(x*dimension)
+        if x == 0:
+            legalActions.remove('up')
+        if x == dimension-1:
+            legalActions.remove('down')
+        if y == 0:
+            legalActions.remove('left')
+        if y == dimension-1:
+            legalActions.remove('right')
+        return legalActions
 
-    def Actions(self, state):
-        actions = self.actions.copy()
-        d = math.ceil(math.sqrt(self.numTiles + 1))
-        pos = state.pos[0]
-        x = pos // d
-        y = pos - d * x
-        if (x == 0):
-            actions.remove('up')
-        if (y == 0):
-            actions.remove('left')
-        if (x == d - 1):
-            actions.remove('down')
-        if (y == d - 1):
-            actions.remove('right')
-        return actions
-
-    def Result(self, s, action):
-        state = s.__copy__()
-        d = math.ceil(math.sqrt(self.numTiles + 1))
-        pos = state.pos[0]
-        tile = 0
+    def result(self, state, action):
+        newState = state.__copy__()
+        dimension = int(math.sqrt(len(state.table)))
         move = 0
-        occuped = False
         if action == 'up':
-            move = -1 * d
+            move = (-1)*dimension
         if action == 'down':
-            move = d
+            move = dimension
         if action == 'left':
             move = -1
         if action == 'right':
             move = 1
-        if pos + move in state.table:
-            tile = state.table[pos + move]
-            occuped = True
-        state.pos[0] = pos + move
-        state.table[pos + move] = 0
-        if occuped:
-            state.pos[tile] = pos
-            state.table[pos] = tile
-        else:
-            del state.pos[tile]
-            del state.table[pos]
-        return state
+        newState.table[newState.blankPos] = newState.table[newState.blankPos+move]
+        newState.table[newState.blankPos+move] = 0
+        newState.blankPos = newState.blankPos+move
+        return newState
 
-    def GoalTest(self, state):
-        s = state.Array()
-        sGoal = self.goal.Array()
-        for i in range(len(s)):
-            if s[i] != sGoal[i]:
+    def goalTest(self, state):
+        for i in range(len(state.table)):
+            if state.table[i]!=self.goalState.table[i]:
                 return False
         return True
 
-    def Cost(self, state, action, newState):
-        return 1
+    def getValueFromDB(self,state, tiles, db):
+        keyState = state.__copy__()
+        keyState.projection(tiles)
+        key = str(keyState)
+        return db[key]
 
+    # TODO define heuristics here! they must have a state for formal parameter
 
-class ReverseProblem:
-    def __init__(self, problem, tiles):
-        self.problem = problem
-        self.initialState = problem.goal.Project(tiles)
-        self.db = {}
+    def uniformCost(self, state):
+        return 0
 
-    def Actions(self, state):
-        return self.problem.Actions(state)
+    def manhattan(self, state):
+        n = len(state.table)
+        distance = 0
+        dimension = int(math.sqrt(n))
+        for i in range(n):
+            if state.table[i] != 0:
+                x = i // dimension
+                y = i - x * dimension
+                goalPos = state.table[i] - 1
+                goalX = goalPos // dimension
+                goalY = goalPos - goalX * dimension
+                distance += abs(x - goalX) + abs(y - goalY)
+        return distance
 
-    def Result(self, s, action):
-        return self.problem.Result(s, action)
+    def linearConflicts(self, state):
+        distance = self.manhattan(state)
+        count = 0
+        n = len(state.table)
+        goal = list(range(1, n))
+        goal.append(0)
+        dimension = int(math.sqrt(n))
+        for i in range(dimension):
+            row = []
+            column = []
+            goalRow = []
+            goalColumn = []
+            for j in range(dimension - 1):
+                for k in range(j + 1, dimension):
+                    row.append((state.table[i * dimension + j], state.table[i * dimension + k]))
+                    goalRow.append((goal[i * dimension + j], goal[i * dimension + k]))
+                    column.append((state.table[j * dimension + i], state.table[k * dimension + i]))
+                    goalColumn.append((goal[j * dimension + i], goal[k * dimension + i]))
+            for j in range(len(row)):
+                for k in range(len(row)):
+                    if row[j][0] != 0 and row[j][1] != 0 and goalRow[k][0] != 0 and goalRow[k][1] != 0:
+                        if row[j][0] == goalRow[k][1] and row[j][1] == goalRow[k][0]:
+                            count += 1
+                    if column[j][0] != 0 and column[j][1] != 0 and goalColumn[k][0] != 0 and goalColumn[k][1] != 0:
+                        if column[j][0] == goalColumn[k][1] and column[j][1] == goalColumn[k][0]:
+                            count += 1
+        return distance + 2 * count
 
-    def Cost(self, state, action, newState):
-        if newState.FringeTiles() == state.FringeTiles():
-            return 0
-        else:
-            return 1
+    def disjointDatabases(self, state):
+        # TODO the following variables(tiles) must be the same of the DBLoader module
+        tiles1 = {1, 5, 9, 13, 2}
+        tiles2 = {6, 10, 14, 3, 7}
+        tiles3 = {11, 15, 4, 8, 12}
 
-    def GetKey(self, state):
-        return state.Serialization()
+        value1 = self.getValueFromDB(state, tiles1, self.db1)
+        value2 = self.getValueFromDB(state, tiles2, self.db2)
+        value3 = self.getValueFromDB(state, tiles3, self.db3)
+        return value1 + value2 + value3
+
+    def disjointAndReflected(self, state):
+        # TODO the following variables(tiles) must be the same of the DBLoader module
+        tiles4 = {1, 2, 3, 4, 5}
+        tiles5 = {6, 7, 8, 9, 10}
+        tiles6 = {11, 12, 13, 14, 15}
+
+        firstValue = self.disjointDatabases(state)
+        value4 = self.getValueFromDB(state, tiles4, self.db4)
+        value5 = self.getValueFromDB(state, tiles5, self.db5)
+        value6 = self.getValueFromDB(state, tiles6, self.db6)
+        secondValue = value4 + value5 + value6
+        if firstValue < secondValue:
+            return secondValue
+        return firstValue

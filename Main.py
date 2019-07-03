@@ -1,12 +1,15 @@
-from Solvers import AStarSolver
 from TilesProblem import TilesProblem
+from Solvers import RandomAStarSolver, AStarSolver
 
-# senza argomenti non usa nessuna euristica(ricerca costo uniforme)
-solver = AStarSolver(['Manhattan', 'Linear Conflicts', 'Disjoint Pattern Databases', 'Disjoint + Reflected'])
-problem = TilesProblem(100)
-for i in range(100):
-    problem.GetInstance(problem.RandomState())
-    solver.Solve(problem)
-    solver.PrintSolutions()  # TODO commentare questa riga se non si vuole vedere i risultati delle singole istanze
-    solver.MemoizeSolutions()
-solver.SensitiveData()
+n = 16  # TODO substitute n with the length of the table(9 for 8-tiles problem for example)
+
+problem = TilesProblem(n)
+randomSolver = RandomAStarSolver(problem, ['manhattan', 'linearConflicts', 'disjointDatabases', 'disjointAndReflected'])
+for i in range(500):
+    randomSolver.solveRandomProblem()
+randomSolver.getResults()
+
+
+# TODO uncomment the following row to test on a specific initial state of 15-tiles problem
+# solver = AStarSolver(problem, ['manhattan', 'linearConflicts', 'disjointDatabases'])
+# solver.solveProblem([1, 10, 7, 3, 5, 6, 4, 8, 13, 11, 12, 15, 14, 0, 9, 2])

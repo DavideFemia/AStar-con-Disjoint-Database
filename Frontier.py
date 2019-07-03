@@ -1,38 +1,83 @@
-from Heap import MinHeap
+import sys
 
+def left(i):
+    return (i << 1) + 1
 
+def right(i):
+    return (i + 1) << 1
+
+def parent(i):
+    return (i - 1) >> 1
+
+#TODO the elements stored in frontier MUST have a key and a priority attribute!
 class AStarFrontier:
     def __init__(self):
-        self.d = {}
-        self.priorityQueue = MinHeap()
-        self.dim = 0
+        self.handle = {}
+        self.heap = []
+        self.size = 0
 
-    # da qui in avanti per list intendo un dizionario con chiave le configurazioni che sono state cambiate di posizione nell'Heap dai metodi Push o da Pop
+    def minHeapify(self,i):
+        size = len(self.heap)-1
+        l = left(i)
+        r = right(i)
+        if l <= size and self.heap[l].priority < self.heap[i].priority:
+            min = l
+        else:
+            min = i
+        if r <= size and self.heap[r].priority < self.heap[min].priority:
+            min = r
+        if min != i:
+            self.handle[self.heap[min].key] = i
+            self.handle[self.heap[i].key] = min
+            tmp = self.heap[i]
+            self.heap[i] = self.heap[min]
+            self.heap[min] = tmp
+            self.minHeapify(min)
 
-    def Push(self, element, key, priority):
-        list = self.priorityQueue.Push((element, key), priority)
-        for keys in list:
-            self.d[keys] = list[keys]
-        self.dim += 1
+    def pop(self):
+        if len(self.heap) > 1:
+            min = self.heap[0]
+            self.heap[0] = self.heap.pop()
+            self.handle[self.heap[0].key] = 0
+            del self.handle[min.key]
+            self.minHeapify(0)
+        else:
+            min = self.heap.pop()
+            del self.handle[min.key]
+        self.size -= 1
+        return min
 
-    def Pop(self):
-        elementWrapper = self.priorityQueue.Pop()  # ((node,key),list)
-        list = elementWrapper[1]
-        for keys in list:
-            self.d[keys] = list[keys]
-        element = elementWrapper[0]  # element è un node wrapper
-        del self.d[element[1]]
-        self.dim -= 1
-        return element[0]
+    def decreasePriority(self, i, priority):
+        if priority <= self.heap[i].priority:
+            self.heap[i].priority = priority
+            while i > 0 and self.heap[parent(i)].priority > self.heap[i].priority:
+                self.handle[self.heap[i].key] = parent(i)
+                self.handle[self.heap[parent(i)].key] = i
+                tmp = self.heap[parent(i)]
+                self.heap[parent(i)] = self.heap[i]
+                self.heap[i] = tmp
+                i = parent(i)
 
-    def Search(self, key):
-        return key in self.d
+    def push(self, node):
+        priority = node.priority
+        node.priority = sys.maxsize
+        size = len(self.heap)
+        self.handle[node.key] = size
+        self.heap.append(node)
+        self.decreasePriority(size, priority)
+        self.size += 1
 
-    def Fixup(self, node, key, priority):
-        pos = self.d[key]
-        redundantPriority = self.priorityQueue.Heap[pos].priority
-        if redundantPriority > priority:
-            self.priorityQueue.Heap[pos].node = (node, key)
-            list = self.priorityQueue.DecreasePriority(pos, priority)  # cambia la priorità
-            for keys in list:
-                self.d[keys] = list[keys]
+    def search(self, node):
+        return node.key in self.handle
+
+    def isBetter(self, node):
+        if node.key in self.handle:
+            return node.priority < self.heap[self.handle[node.key]].priority
+        return False
+
+    def fixup(self,node):
+        pos = self.handle[node.key]
+        priority = node.priority
+        node.priority = sys.maxsize
+        self.heap[pos] = node
+        self.decreasePriority(pos, priority)
